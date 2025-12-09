@@ -1,0 +1,130 @@
+import time
+import streamlit as st
+import random
+
+# ----------------------------------
+# Streamlit Page Config
+# ----------------------------------
+st.set_page_config(page_title="Agentic AI Loan System", layout="wide")
+st.title("🤖 Agentic AI Personal Loan Automation – LIVE Agent Prototype")
+st.caption("FinNova | EY Techathon 6.0")
+
+# ----------------------------------
+# Input Fields
+# ----------------------------------
+st.sidebar.header("Applicant Details")
+
+name = st.sidebar.text_input("Applicant Name", "Rahul Sharma")
+loan_amount = st.sidebar.number_input("Loan Amount (₹)", 50000, 2000000, 300000, 50000)
+income = st.sidebar.number_input("Monthly Income (₹)", 10000, 300000, 60000, 5000)
+emi = st.sidebar.number_input("Existing EMI (₹)", 0, 200000, 5000, 1000)
+credit_score = st.sidebar.slider("Credit Score", 550, 900, 760)
+tenure = st.sidebar.slider("Tenure (years)", 1, 7, 3)
+employment = st.sidebar.selectbox("Employment Type", ["Salaried", "Self-Employed"])
+
+start_button = st.sidebar.button("▶ Run Agents")
+
+# ----------------------------------
+# Container Setup
+# ----------------------------------
+agent_log = st.empty()
+decision_box = st.empty()
+explain_box = st.empty()
+letter_box = st.empty()
+
+# ----------------------------------
+# Helper functions
+# ----------------------------------
+def log(msg):
+    agent_log.write(msg)
+    time.sleep(0.6)
+
+def calculate_decision():
+    rate = 0.12
+    if credit_score >= 780:
+        rate = 0.115
+        risk = "LOW RISK"
+    elif credit_score >= 720:
+        rate = 0.125
+        risk = "MEDIUM RISK"
+    else:
+        rate = 0.145
+        risk = "HIGH RISK"
+
+    months = tenure * 12
+    emi_calc = (loan_amount * (1 + rate * tenure)) / months
+    dti = (emi + emi_calc) / income
+
+    if credit_score >= 720 and dti <= 0.5:
+        decision = "APPROVED"
+    elif credit_score >= 650 and dti <= 0.65:
+        decision = "COUNTER OFFER"
+    else:
+        decision = "REJECTED"
+
+    return decision, rate, emi_calc, risk, dti, months
+
+def explain_factors():
+    return {
+        "Income Stability": round((income - 25000) / 30000, 2),
+        "Credit Score Strength": round((credit_score - 700) / 150, 2),
+        "Existing Obligations": round(-(emi / income) * 2, 2),
+        "Policy Adjustments": round(random.uniform(-0.2, 0.2), 2)
+    }
+
+# ----------------------------------
+# Run Agent Workflow
+# ----------------------------------
+if start_button:
+    log("🧠 **MASTER AGENT:** Starting full loan journey...\n")
+
+    log(f"🗣️ **SALES AGENT:** User requested ₹{loan_amount:,} for {tenure} years.")
+    log("🗣️ **SALES AGENT:** Collecting user details...")
+
+    log("\n🔎 **VERIFICATION AGENT:** Verifying identity & employment...")
+    log(f"🔎 Monthly income: ₹{income:,}")
+    log(f"🔎 Existing EMI: ₹{emi:,}")
+    log(f"🔎 Employment: {employment} ✔")
+
+    log("\n📊 **CREDIT AGENT:** Fetching credit bureau score...")
+    log(f"📊 Credit Score: {credit_score} ✔")
+
+    log("\n⚖️ **RISK AGENT:** Evaluating profile...")
+    decision, rate, emi_calc, risk_band, dti, months = calculate_decision()
+    log(f"⚖️ Risk Band: {risk_band}")
+    log(f"⚖️ Debt-to-Income Ratio: {round(dti, 2)}")
+
+    log("\n🧩 **EXPLAINABILITY AGENT:** Creating reason codes...")
+    factors = explain_factors()
+    for k, v in factors.items():
+        log(f"- {k}: {v}")
+
+    log("\n🏁 **DECISION AGENT:** Finalizing decision...")
+
+    # Show decision box
+    if decision == "APPROVED":
+        decision_box.success(f"🎉 APPROVED – ₹{loan_amount:,} @ {round(rate*100,2)}% interest")
+    elif decision == "COUNTER OFFER":
+        decision_box.warning(f"⚠ Counter Offer – Lower amount recommended")
+    else:
+        decision_box.error("❌ REJECTED – Does not meet risk criteria")
+
+    # Explainability
+    explain_box.subheader("📊 Explainability Factors")
+    explain_box.json(factors)
+
+    # Sanction letter
+    if decision in ["APPROVED", "COUNTER OFFER"]:
+        letter_box.info(
+f"""
+### 📝 Sample Sanction Letter  
+**Applicant:** {name}  
+**Decision:** {decision}  
+**Sanctioned Amount:** ₹{loan_amount:,}  
+**Interest Rate:** {round(rate*100,2)}%  
+**Tenure:** {months} months  
+**Approx EMI:** ₹{int(emi_calc):,}  
+"""
+        )
+    else:
+        letter_box.warning("No sanction letter generated for rejected applications.")
